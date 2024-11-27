@@ -5,13 +5,13 @@ import { useState } from "react";
 function App() {
   const [colour, setColour] = useState<string>(""); // Background color
   const [font, setFont] = useState<string>(""); // Font family
+  const [detectedFonts, setDetectedFonts] = useState<string[]>([]); // Detected fonts
 
   const onclick = async () => {
     try {
       // Query the active tab in the current window
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      // Ensure the tab exists and has a valid ID
       if (tab && tab.id !== undefined) {
         chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -31,7 +31,30 @@ function App() {
               document.head.appendChild(style);
             };
             applyFontWithCSS(font);
+
+            // Detect and return all unique fonts used on the website
+            const detectFonts = (): string[] => {
+              const elements = document.querySelectorAll("*"); // Get all elements
+              const fonts = new Set<string>(); // Use a Set to store unique fonts
+
+              elements.forEach((el) => {
+                const computedStyle = window.getComputedStyle(el);
+                if (computedStyle.fontFamily) {
+                  fonts.add(computedStyle.fontFamily);
+                }
+              });
+
+              return Array.from(fonts); // Convert Set to an Array
+            };
+
+            // Return the detected fonts
+            return detectFonts();
           },
+        }, (injectionResults) => {
+          // Receive detected fonts from the content script
+          if (injectionResults && injectionResults[0]?.result) {
+            setDetectedFonts(injectionResults[0].result);
+          }
         });
       } else {
         console.error("No active tab or tab ID is undefined");
@@ -74,11 +97,23 @@ function App() {
             <option value="'Comic Sans MS'">Comic Sans MS</option>
           </select>
         </div>
-        <button onClick={onclick}>Apply Changes</button>
+        <button onClick={onclick}>Apply Changes & Detect Fonts</button>
         <p>Choose a color and font to update the browser page</p>
       </div>
+
+      {detectedFonts.length > 0 && (
+        <div className="detected-fonts">
+          <h2>Detected Fonts:</h2>
+          <ul>
+            {detectedFonts.map((font, index) => (
+              <li key={index}>{font}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="read-the-docs">
-        Click on the Lion Logo to learn more
+        Click on the Vite and React logos to learn more
       </p>
     </>
   );
