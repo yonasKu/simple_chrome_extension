@@ -7,9 +7,9 @@ function App() {
   const [font, setFont] = useState<string>(""); // Font family
   const [detectedFonts, setDetectedFonts] = useState<string[]>([]); // Detected fonts
 
-  const onclick = async () => {
+  // Function to apply color and font family changes
+  const applyChanges = async () => {
     try {
-      // Query the active tab in the current window
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
       if (tab && tab.id !== undefined) {
@@ -31,7 +31,25 @@ function App() {
               document.head.appendChild(style);
             };
             applyFontWithCSS(font);
+          },
+        });
+      } else {
+        console.error("No active tab or tab ID is undefined");
+      }
+    } catch (error) {
+      console.error("An error occurred:", error);
+    }
+  };
 
+  // Function to detect fonts used on the website
+  const detectFonts = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (tab && tab.id !== undefined) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
             // Detect and return all unique fonts used on the website
             const detectFonts = (): string[] => {
               const elements = document.querySelectorAll("*"); // Get all elements
@@ -47,7 +65,6 @@ function App() {
               return Array.from(fonts); // Convert Set to an Array
             };
 
-            // Return the detected fonts
             return detectFonts();
           },
         }, (injectionResults) => {
@@ -60,7 +77,7 @@ function App() {
         console.error("No active tab or tab ID is undefined");
       }
     } catch (error) {
-      console.error("An error occurred:", error);
+      console.error("An error occurred while detecting fonts:", error);
     }
   };
 
@@ -74,6 +91,7 @@ function App() {
       <h1>Eglion</h1>
       <div className="card">
         <div>
+          <button onClick={detectFonts}>Detect Fonts</button>
           <label>Choose Background Color:</label>
           <input
             type="color"
@@ -97,8 +115,9 @@ function App() {
             <option value="'Comic Sans MS'">Comic Sans MS</option>
           </select>
         </div>
-        <button onClick={onclick}>Apply Changes & Detect Fonts</button>
-        <p>Choose a color and font to update the browser page</p>
+        <button onClick={applyChanges}>Apply Changes</button>
+
+        <p>Choose a color and font to update the browser page or detect fonts used.</p>
       </div>
 
       {detectedFonts.length > 0 && (
@@ -106,7 +125,7 @@ function App() {
           <h2>Detected Fonts:</h2>
           <ul>
             {detectedFonts.map((font, index) => (
-              <li key={index}>{font}</li>
+              <li key={index} style={{ fontFamily: font }}>{font}</li>
             ))}
           </ul>
         </div>
