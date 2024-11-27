@@ -6,8 +6,9 @@ function App() {
   const [colour, setColour] = useState<string>(""); // Background color
   const [font, setFont] = useState<string>(""); // Font family
   const [detectedFonts, setDetectedFonts] = useState<string[]>([]); // Detected fonts
+  const [error, setError] = useState<string | null>(null); // Error handling
 
-  // Function to apply color and font family changes
+  // Function to apply font to the whole page
   const applyChanges = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -23,21 +24,50 @@ function App() {
             // Dynamically inject CSS to force font-family change with higher specificity
             const applyFontWithCSS = (font: string) => {
               const style = document.createElement("style");
-              style.textContent = `
-                * {
-                  font-family: ${font} !important;
-                }
-              `;
+              style.textContent = `* { font-family: ${font} !important; }`;
               document.head.appendChild(style);
             };
             applyFontWithCSS(font);
           },
         });
       } else {
-        console.error("No active tab or tab ID is undefined");
+        setError("No active tab or tab ID is undefined.");
       }
     } catch (error) {
       console.error("An error occurred:", error);
+      setError("An error occurred while applying the font.");
+    }
+  };
+
+  // Function to apply font only to the selected text
+  const applyFontToSelection = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (tab && tab.id !== undefined) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          args: [font],
+          func: (font) => {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0); // Get selected text range
+              const span = document.createElement("span");
+              span.style.fontFamily = font; // Apply selected font
+              span.textContent = range.toString(); // Preserve the selected text
+              range.deleteContents(); // Remove the original selection
+              range.insertNode(span); // Insert the styled span
+            } else {
+              alert("Please select text first to apply the font.");
+            }
+          },
+        });
+      } else {
+        setError("No active tab or tab ID is undefined.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while applying the font.");
     }
   };
 
@@ -50,25 +80,21 @@ function App() {
         chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            // Detect and return all unique fonts used on the website
             const detectFonts = (): string[] => {
-              const elements = document.querySelectorAll("*"); // Get all elements
-              const fonts = new Set<string>(); // Use a Set to store unique fonts
-
+              const elements = document.querySelectorAll("*");
+              const fonts = new Set<string>();
               elements.forEach((el) => {
                 const computedStyle = window.getComputedStyle(el);
                 if (computedStyle.fontFamily) {
                   fonts.add(computedStyle.fontFamily);
                 }
               });
-
-              return Array.from(fonts); // Convert Set to an Array
+              return Array.from(fonts);
             };
 
             return detectFonts();
           },
         }, (injectionResults) => {
-          // Receive detected fonts from the content script
           if (injectionResults && injectionResults[0]?.result) {
             setDetectedFonts(injectionResults[0].result);
           }
@@ -82,9 +108,9 @@ function App() {
   };
 
   return (
-    <>
+    <div className="app">
       <div>
-        <a href="https://vitejs.dev" target="_blank" rel="noopener noreferrer">
+        <a href="https://yonasku.vercel.app" target="_blank" rel="noopener noreferrer">
           <img src={Lion} className="logo" alt="Vite logo" />
         </a>
       </div>
@@ -115,9 +141,11 @@ function App() {
             <option value="'Comic Sans MS'">Comic Sans MS</option>
           </select>
         </div>
-        <button onClick={applyChanges}>Apply Changes</button>
+        <button onClick={applyChanges}>Apply Font to Whole Page</button>
+        <button onClick={applyFontToSelection}>Apply Font to Selected Text</button>
 
-        <p>Choose a color and font to update the browser page or detect fonts used.</p>
+        {error && <p className="error">{error}</p>}
+        <p>Choose a color and font to update the browser page or apply to selected text.</p>
       </div>
 
       {detectedFonts.length > 0 && (
@@ -132,9 +160,9 @@ function App() {
       )}
 
       <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
+        Click on the Lion Logo to learn more
       </p>
-    </>
+    </div>
   );
 }
 
