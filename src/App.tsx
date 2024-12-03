@@ -8,10 +8,100 @@ function App() {
   const [detectedFonts, setDetectedFonts] = useState<string[]>([]); // Detected fonts
   const [error, setError] = useState<string | null>(null); // Error handling
 
+  
+  const logSelectedTextAndFont = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (tab && tab.id !== undefined) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0); // Get the selected text range
+              const selectedText = range.toString(); // Get the actual selected text
+              const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
+
+              if (selectedElement) {
+                // Get the computed style (font-family) of the selected element
+                const computedStyle = window.getComputedStyle(selectedElement);
+                const fontFamily = computedStyle.fontFamily;
+                
+                // Log the selected text and font style to the browser console
+                console.log(`Selected Text: ${selectedText}`);
+                console.log(`Font Style: ${fontFamily}`);
+              }
+            } else {
+              console.log("No text selected.");
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error logging selected text and font:", error);
+      setError("An error occurred while retrieving the selected text or font.");
+    }
+  };
+
+  const showFontTooltip = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  
+      if (tab && tab.id !== undefined) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0); // Get the selected text range
+              const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
+  
+              if (selectedElement) {
+                // Get the computed style (font-family) of the selected element
+                const computedStyle = window.getComputedStyle(selectedElement);
+                const fontFamily = computedStyle.fontFamily;
+  
+                // Calculate the position of the selected text on the page
+                const rect = range.getBoundingClientRect();
+                const tooltip = document.createElement("div");
+                tooltip.textContent = `Font: ${fontFamily}`;
+                tooltip.style.position = "absolute";
+                tooltip.style.backgroundColor = "#333";
+                tooltip.style.color = "#fff";
+                tooltip.style.padding = "5px";
+                tooltip.style.borderRadius = "5px";
+                tooltip.style.fontSize = "12px";
+                tooltip.style.zIndex = "9999"; // Ensure it's on top
+                tooltip.style.left = `${rect.left + window.scrollX}px`; // Horizontal position
+                tooltip.style.top = `${rect.top + window.scrollY - 25}px`; // Vertical position, above the selection
+  
+                // Append the tooltip to the body
+                document.body.appendChild(tooltip);
+  
+                // Remove the tooltip after 2 seconds
+                setTimeout(() => {
+                  document.body.removeChild(tooltip);
+                }, 2000);
+              }
+            } else {
+              console.log("No text selected.");
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error showing font tooltip:", error);
+      setError("An error occurred while retrieving the selected text or font.");
+    }
+  };
   // Function to apply font to the whole page
   const applyChanges = async () => {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
 
       if (tab && tab.id !== undefined) {
         chrome.scripting.executeScript({
@@ -42,7 +132,10 @@ function App() {
   // Function to apply font only to the selected text
   const applyFontToSelection = async () => {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
 
       if (tab && tab.id !== undefined) {
         chrome.scripting.executeScript({
@@ -74,43 +167,47 @@ function App() {
   // Function to detect fonts used on the website
   const detectFonts = async () => {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       if (tab && tab.id !== undefined) {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            const detectFonts = (): string[] => {
+        chrome.scripting.executeScript(
+          {
+            target: { tabId: tab.id },
+            func: () => {
               const elements = document.querySelectorAll("*");
               const fonts = new Set<string>();
               elements.forEach((el) => {
                 const computedStyle = window.getComputedStyle(el);
-                if (computedStyle.fontFamily) {
-                  fonts.add(computedStyle.fontFamily);
-                }
+                const fontFamilies = computedStyle.fontFamily
+                  .split(",")
+                  .map((f) => f.trim());
+                fontFamilies.forEach((font) => fonts.add(font)); // Add each font individually
               });
               return Array.from(fonts);
-            };
-
-            return detectFonts();
+            },
           },
-        }, (injectionResults) => {
-          if (injectionResults && injectionResults[0]?.result) {
-            setDetectedFonts(injectionResults[0].result);
+          (injectionResults) => {
+            if (injectionResults && injectionResults[0]?.result) {
+              setDetectedFonts(injectionResults[0].result);
+            }
           }
-        });
-      } else {
-        console.error("No active tab or tab ID is undefined");
+        );
       }
     } catch (error) {
-      console.error("An error occurred while detecting fonts:", error);
+      console.error("Error detecting fonts:", error);
     }
   };
 
   return (
     <div className="app">
       <div>
-        <a href="https://yonasku.vercel.app" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://yonasku.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <img src={Lion} className="logo" alt="Vite logo" />
         </a>
       </div>
@@ -127,10 +224,7 @@ function App() {
         </div>
         <div>
           <label>Choose Font Family:</label>
-          <select
-            onChange={(e) => setFont(e.currentTarget.value)}
-            value={font}
-          >
+          <select onChange={(e) => setFont(e.currentTarget.value)} value={font}>
             <option value="">Select a font</option>
             <option value="Arial">Arial</option>
             <option value="'Courier New'">Courier New</option>
@@ -142,10 +236,15 @@ function App() {
           </select>
         </div>
         <button onClick={applyChanges}>Apply Font to Whole Page</button>
-        <button onClick={applyFontToSelection}>Apply Font to Selected Text</button>
+        <button onClick={applyFontToSelection}>
+          Apply Font to Selected Text
+        </button>
 
         {error && <p className="error">{error}</p>}
-        <p>Choose a color and font to update the browser page or apply to selected text.</p>
+        <p>
+          Choose a color and font to update the browser page or apply to
+          selected text.
+        </p>
       </div>
 
       {detectedFonts.length > 0 && (
@@ -153,15 +252,26 @@ function App() {
           <h2>Detected Fonts:</h2>
           <ul>
             {detectedFonts.map((font, index) => (
-              <li key={index} style={{ fontFamily: font }}>{font}</li>
+              <li key={index} style={{ fontFamily: font }}>
+                {font}
+              </li>
             ))}
           </ul>
         </div>
       )}
+      {/* Button to trigger the log of selected text and font */}
+      <button onClick={logSelectedTextAndFont}>
+        Log Selected Text and Font
+      </button>
+      {/* Button to trigger the display of font style tooltip */}
+      <button onClick={showFontTooltip}>Show Font Tooltip for Selected Text</button>
 
-      <p className="read-the-docs">
-        Click on the Lion Logo to learn more
+      {error && <p className="error">{error}</p>}
+      <p>
+        Select some text on the page, then click the button to log the selected
+        text and its font style.
       </p>
+      <p className="read-the-docs">Click on the Lion Logo to learn more</p>
     </div>
   );
 }

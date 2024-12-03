@@ -178,7 +178,7 @@ p {
     font-size: 2rem;
   }
 }
-button {
+ button {
   background-color: #4a90e2;
   color: white;
   padding: 10px 15px;
@@ -193,14 +193,19 @@ button {
 button:hover {
   background-color: #357abd;
 }
-
+/* 
 .detected-fonts ul {
   list-style-type: none;
   padding: 0;
-}
+} 
+ 
 
 .detected-fonts li {
   font-size: 1rem;
   margin: 5px 0;
   color: #555;
+} */
+.tooltip {
+  border: 2px solid red; /* Temporarily to make it more visible */
+   z-index: 9999;
 }
