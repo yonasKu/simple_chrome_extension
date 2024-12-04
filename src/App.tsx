@@ -7,65 +7,210 @@ function App() {
   const [font, setFont] = useState<string>(""); // Font family
   const [detectedFonts, setDetectedFonts] = useState<string[]>([]); // Detected fonts
   const [error, setError] = useState<string | null>(null); // Error handling
+  const [isSelectionActive, setIsSelectionActive] = useState<boolean>(true);
 
-  
-  const logSelectedTextAndFont = async () => {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // const logSelectedTextAndFont = async () => {
+  //   try {
+  //     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (tab && tab.id !== undefined) {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0); // Get the selected text range
-              const selectedText = range.toString(); // Get the actual selected text
-              const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
+  //     if (tab && tab.id !== undefined) {
+  //       chrome.scripting.executeScript({
+  //         target: { tabId: tab.id },
+  //         func: () => {
+  //           const selection = window.getSelection();
+  //           if (selection && selection.rangeCount > 0) {
+  //             const range = selection.getRangeAt(0); // Get the selected text range
+  //             const selectedText = range.toString(); // Get the actual selected text
+  //             const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
 
-              if (selectedElement) {
-                // Get the computed style (font-family) of the selected element
-                const computedStyle = window.getComputedStyle(selectedElement);
-                const fontFamily = computedStyle.fontFamily;
-                
-                // Log the selected text and font style to the browser console
-                console.log(`Selected Text: ${selectedText}`);
-                console.log(`Font Style: ${fontFamily}`);
-              }
-            } else {
-              console.log("No text selected.");
-            }
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error logging selected text and font:", error);
-      setError("An error occurred while retrieving the selected text or font.");
-    }
-  };
+  //             if (selectedElement) {
+  //               // Get the computed style (font-family) of the selected element
+  //               const computedStyle = window.getComputedStyle(selectedElement);
+  //               const fontFamily = computedStyle.fontFamily;
+
+  //               // Log the selected text and font style to the browser console
+  //               console.log(`Selected Text: ${selectedText}`);
+  //               console.log(`Font Style: ${fontFamily}`);
+  //             }
+  //           } else {
+  //             console.log("No text selected.");
+  //           }
+  //         }
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error logging selected text and font:", error);
+  //     setError("An error occurred while retrieving the selected text or font.");
+  //   }
+  // };
+
+  // const showFontTooltip = async () => {
+  //   try {
+  //     const [tab] = await chrome.tabs.query({
+  //       active: true,
+  //       currentWindow: true,
+  //     });
+
+  //     if (tab && tab.id !== undefined) {
+  //       chrome.scripting.executeScript({
+  //         target: { tabId: tab.id },
+  //         func: () => {
+  //           const selection = window.getSelection();
+  //           if (selection && selection.rangeCount > 0) {
+  //             const range = selection.getRangeAt(0); // Get the selected text range
+  //             const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
+
+  //             if (selectedElement) {
+  //               // Get the computed style (font-family) of the selected element
+  //               const computedStyle = window.getComputedStyle(selectedElement);
+  //               const fontFamily = computedStyle.fontFamily;
+
+  //               // Calculate the position of the selected text on the page
+  //               const rect = range.getBoundingClientRect();
+  //               const tooltip = document.createElement("div");
+  //               tooltip.textContent = `Font: ${fontFamily}`;
+  //               tooltip.style.position = "absolute";
+  //               tooltip.style.backgroundColor = "#333";
+  //               tooltip.style.color = "#fff";
+  //               tooltip.style.padding = "5px";
+  //               tooltip.style.borderRadius = "5px";
+  //               tooltip.style.fontSize = "12px";
+  //               tooltip.style.zIndex = "9999"; // Ensure it's on top
+  //               tooltip.style.left = `${rect.left + window.scrollX}px`; // Horizontal position
+  //               tooltip.style.top = `${rect.top + window.scrollY - 25}px`; // Vertical position, above the selection
+
+  //               // Append the tooltip to the body
+  //               document.body.appendChild(tooltip);
+
+  //               // Remove the tooltip after 2 seconds
+  //               setTimeout(() => {
+  //                 document.body.removeChild(tooltip);
+  //               }, 2000);
+  //             }
+  //           } else {
+  //             console.log("No text selected.");
+  //           }
+  //         },
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error showing font tooltip:", error);
+  //     setError("An error occurred while retrieving the selected text or font.");
+  //   }
+  // };
+
+  // const showFontTooltip = async () => {
+  //   try {
+  //     const [tab] = await chrome.tabs.query({
+  //       active: true,
+  //       currentWindow: true,
+  //     });
+
+  //     if (tab && tab.id !== undefined) {
+  //       chrome.scripting.executeScript({
+  //         target: { tabId: tab.id },
+  //         args: [isSelectionActive],
+  //         func: (isSelectionActive) => {
+  //           let tooltip: HTMLDivElement | null = null;
+
+  //           // Function to create or update the tooltip
+  //           const createOrUpdateTooltip = (
+  //             fontFamily: string,
+  //             rect: DOMRect
+  //           ) => {
+  //             if (!tooltip) {
+  //               // Create a tooltip if it doesn't exist
+  //               tooltip = document.createElement("div");
+  //               tooltip.style.position = "absolute";
+  //               tooltip.style.backgroundColor = "#333";
+  //               tooltip.style.color = "#fff";
+  //               tooltip.style.padding = "5px";
+  //               tooltip.style.borderRadius = "5px";
+  //               tooltip.style.fontSize = "12px";
+  //               tooltip.style.zIndex = "9999"; // Ensure it's on top
+  //               document.body.appendChild(tooltip);
+  //             }
+
+  //             // Update tooltip content and position
+  //             tooltip.textContent = `Font: ${fontFamily}`;
+  //             tooltip.style.left = `${rect.left + window.scrollX}px`; // Horizontal position
+  //             tooltip.style.top = `${rect.top + window.scrollY - 25}px`; // Vertical position, above the selection
+  //           };
+
+  //           // Function to handle selection changes
+  //           const handleSelectionChange = () => {
+  //             if (!isSelectionActive) return;
+
+  //             const selection = window.getSelection();
+  //             if (selection && selection.rangeCount > 0) {
+  //               const range = selection.getRangeAt(0); // Get the selected text range
+  //               const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
+
+  //               if (selectedElement) {
+  //                 // Get the computed style (font-family) of the selected element
+  //                 const computedStyle =
+  //                   window.getComputedStyle(selectedElement);
+  //                 const fontFamily = computedStyle.fontFamily;
+
+  //                 // Calculate the position of the selected text on the page
+  //                 const rect = range.getBoundingClientRect();
+  //                 createOrUpdateTooltip(fontFamily, rect);
+  //               }
+  //             } else if (tooltip) {
+  //               // Remove the tooltip if no text is selected
+  //               tooltip.remove();
+  //               tooltip = null;
+  //             }
+  //           };
+
+  //           if (isSelectionActive) {
+  //             document.addEventListener(
+  //               "selectionchange",
+  //               handleSelectionChange
+  //             );
+  //           } else {
+  //             document.removeEventListener(
+  //               "selectionchange",
+  //               handleSelectionChange
+  //             );
+  //             if (tooltip) {
+  //               tooltip.remove(); // Safely removes the tooltip if it exists
+  //               tooltip = null; // Reset tooltip to null
+  //             }
+  //           }
+  //         },
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error toggling font tooltip functionality:", error);
+  //     setError(
+  //       "An error occurred while toggling the selected text functionality."
+  //     );
+  //   }
+  // };
 
   const showFontTooltip = async () => {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
       if (tab && tab.id !== undefined) {
         chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: () => {
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0); // Get the selected text range
-              const selectedElement = range.startContainer.parentElement; // Get the parent element of the selected text
-  
-              if (selectedElement) {
-                // Get the computed style (font-family) of the selected element
-                const computedStyle = window.getComputedStyle(selectedElement);
-                const fontFamily = computedStyle.fontFamily;
-  
-                // Calculate the position of the selected text on the page
-                const rect = range.getBoundingClientRect();
-                const tooltip = document.createElement("div");
-                tooltip.textContent = `Font: ${fontFamily}`;
+          args: [isSelectionActive],
+          func: (isSelectionActive: boolean) => {
+            let tooltip: HTMLDivElement | null = null;
+
+            // Function to create or update the tooltip
+            const createOrUpdateTooltip = (
+              fontFamily: string,
+              rect: DOMRect
+            ) => {
+              if (!tooltip) {
+                // Create a tooltip if it doesn't exist
+                tooltip = document.createElement("div") as HTMLDivElement;
                 tooltip.style.position = "absolute";
                 tooltip.style.backgroundColor = "#333";
                 tooltip.style.color = "#fff";
@@ -73,28 +218,71 @@ function App() {
                 tooltip.style.borderRadius = "5px";
                 tooltip.style.fontSize = "12px";
                 tooltip.style.zIndex = "9999"; // Ensure it's on top
-                tooltip.style.left = `${rect.left + window.scrollX}px`; // Horizontal position
-                tooltip.style.top = `${rect.top + window.scrollY - 25}px`; // Vertical position, above the selection
-  
-                // Append the tooltip to the body
                 document.body.appendChild(tooltip);
-  
-                // Remove the tooltip after 2 seconds
-                setTimeout(() => {
-                  document.body.removeChild(tooltip);
-                }, 2000);
               }
+
+              // Update tooltip content and position
+              if (tooltip) {
+                tooltip.textContent = `Font: ${fontFamily}`;
+                tooltip.style.left = `${rect.left + window.scrollX}px`;
+                tooltip.style.top = `${rect.top + window.scrollY - 25}px`;
+              }
+            };
+
+            // Function to handle selection changes
+            const handleSelectionChange = () => {
+              if (!isSelectionActive) return;
+
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const selectedElement = range.startContainer.parentElement;
+
+                if (selectedElement) {
+                  const computedStyle =
+                    window.getComputedStyle(selectedElement);
+                  const fontFamily = computedStyle.fontFamily;
+
+                  const rect = range.getBoundingClientRect();
+                  createOrUpdateTooltip(fontFamily, rect);
+                }
+              } else if (tooltip) {
+                // Send message to the extension to remove the tooltip
+                chrome.runtime.sendMessage({ action: "removeTooltip" });
+
+                tooltip = null; // Reset tooltip to null
+              }
+            };
+
+            // Add or remove event listener based on selection activity
+            if (isSelectionActive) {
+              document.addEventListener(
+                "selectionchange",
+                handleSelectionChange
+              );
             } else {
-              console.log("No text selected.");
+              document.removeEventListener(
+                "selectionchange",
+                handleSelectionChange
+              );
+
+              // Send message to remove tooltip when toggling off
+              if (tooltip) {
+                chrome.runtime.sendMessage({ action: "removeTooltip" });
+                tooltip = null; // Reset tooltip to null
+              }
             }
-          }
+          },
         });
       }
     } catch (error) {
-      console.error("Error showing font tooltip:", error);
-      setError("An error occurred while retrieving the selected text or font.");
+      console.error("Error toggling font tooltip functionality:", error);
+      setError(
+        "An error occurred while toggling the selected text functionality."
+      );
     }
   };
+
   // Function to apply font to the whole page
   const applyChanges = async () => {
     try {
@@ -260,11 +448,20 @@ function App() {
         </div>
       )}
       {/* Button to trigger the log of selected text and font */}
-      <button onClick={logSelectedTextAndFont}>
+      {/* <button onClick={logSelectedTextAndFont}>
         Log Selected Text and Font
-      </button>
+      </button> */}
       {/* Button to trigger the display of font style tooltip */}
-      <button onClick={showFontTooltip}>Show Font Tooltip for Selected Text</button>
+      <button
+        onClick={() => {
+          setIsSelectionActive((prev) => !prev);
+          showFontTooltip(); // Reapply the functionality with the new state
+        }}
+      >
+        {isSelectionActive
+          ? "Disable Selection Feature"
+          : "Enable Selection Feature"}
+      </button>
 
       {error && <p className="error">{error}</p>}
       <p>
